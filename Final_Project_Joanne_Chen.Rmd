@@ -1,0 +1,538 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r knitr_setup, echo=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+# Joanne Chen
+# CMSC320 Spring 2019 Final Project
+
+# Honey Production in the USA from 1998-2012
+
+Bees. Some of us may have had painful memories when it comes to bees. Apart from their stingers, 
+bees are vital to Earth; for instance, plants need bees to pollinate. Pollination gives way to 
+habitats for animals and food production for all. 
+
+However, climate change, harmful pesticides, loss of habitat, etc. have significantly contributed
+to the rapid decline of the honeybee population in the past decades. Subsequently, the honey
+production has been negatively affected.
+
+Data Science has helped researchers, environmentalists, and others observe the bee population
+decline and bring more attention to the importance of taking actions towards protecting the bees.
+
+Here we explore a dataset regarding the honey production in the United States of America from 
+1998 to 2012, while also providing a walk through tutorial of the entire data science pipeline.
+
+Sources:
+  - https://www.earthday.org/campaigns/endangered-species/bees/
+  - http://sos-bees.org/
+  - https://www.planetbee.org/save-honeybees 
+
+Dataset URL: https://www.kaggle.com/jessicali9530/honey-production 
+
+## Pre-Processing
+
+First, we are calling numerous libraries that are necessary for our code because these libraries 
+consist of many useful R functions that will be used in the code.
+
+```{r load_data, message=FALSE}
+# Calling Libraries
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(magrittr)
+library(tidyr)
+library(stringr)
+```
+
+## Data Loading and Parsing
+
+After downloading a CSV file from Kaggle, use the read_csv() function with the file path as the 
+parameter to read the data from a CSV file into a data frame in R. 
+When loading a CSV file, you can parse it with column specifications using the cols() or 
+cols_only() function. cols() includes all columns in the data, whereas cols_only() only include 
+the columns specified.
+
+For more information on the read_csv() function:   
+  - https://readr.tidyverse.org/reference/read_delim.html 
+for more information on the cols() and cols_only() function:
+  - https://www.rdocumentation.org/packages/readr/versions/1.3.1/topics/cols 
+Find datasets through links provided here: 
+  - http://www.hcbravo.org/IntroDataSci/resources/ 
+  - https://www.kaggle.com/datasets 
+  
+```{r}
+df <- read_csv('/Users/JoanneChen/Desktop/honeyproduction.csv')
+
+# Parsed with column specification
+cols(
+  state = col_character(),
+  numcol = col_double(),
+  yieldpercol = col_double(),
+  totalprod = col_double(),
+  stocks = col_double(),
+  priceperlb = col_double(),
+  prodvalue = col_double(),
+  year = col_integer()
+)
+df
+```
+
+The set_colnames function allows for renaming column names.
+
+```{r}
+# Change column names
+df <- df %>%
+  set_colnames(c("state", "num_colonies", "yield_per_colony_lb", "total_production", "stocks", "price_per_lb", "production_value", "year"))
+df
+```
+
+# Exploratory Data Analysis
+
+Operations, such as select, filter, slice, arrange, group_by, and summarise, are used to help 
+perform almost any analysis on data frames.
+
+Using the various operations, we can determine which state has had the largest and smallest total
+average honey production between 1998 and 2012, and on average, how many colonies it takes to 
+create 1 pound of honey for each state.
+
+Documentation of operations used:
+  - group_by(): https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/group_by
+  - summarise(): https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/summarise
+  - filter(): https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/filter
+  - mutate(): https://www.rdocumentation.org/packages/dplyr/versions/0.5.0/topics/mutate 
+  
+```{r}
+# North Dakota (ND) has the largest average honey production
+df %>%
+  group_by(state) %>%
+  summarise(avg_production = mean(total_production)) %>%
+  filter(avg_production == max(avg_production))
+```
+
+```{r}
+# Oklahoma (OK) has the smallest average honey production
+df %>%
+  group_by(state) %>%
+  summarise(avg_production = mean(total_production)) %>%
+  filter(avg_production == min(avg_production))
+```
+
+```{r}
+# On average, the amount of colonies it takes to make 1 pound of honey for each state
+df %>%
+  group_by(state) %>%
+  summarise(avg_production = mean(total_production), 
+            avg_yield = mean(yield_per_colony_lb)) %>%
+  mutate(num_colonies_1lb = avg_production/avg_yield)
+```
+
+The 4 plots below are all scatterplots of Total Honey Production in Pounds vs Year for all 
+states. For majority of the states, the plots illustrate a gradual decrease in total honey 
+production between the years 1998 and 2012.
+
+geom_point() is used to create the scatterplot and geom_smooth() is used to create the trend 
+line. labs() and ggtitle() is used to customize the names of the axises and title of the plot.
+In addition, theme(plot.title = element_text(hjust = 0.5)) helps center the title of the plot.
+
+Here is a ggplot2 reference sheet: https://ggplot2.tidyverse.org/reference/ 
+
+```{r}
+df %>%
+  filter(state %in% c("CA", "FL", "ND", "MT", "MN", "SD", "TX")) %>%
+  ggplot(aes(x = year, y = total_production, color = state)) + geom_point() + 
+  geom_smooth(method = loess) + labs(x = "Year", y = "Total Yearly Honey Production (lb)") +
+  ggtitle("Total Yearly Honey Production (lb) vs. Year") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+df %>%
+  filter(state %in% c("AZ", "GA", "IA", "UT", "PA", "CO", "AL", "HI")) %>%
+  ggplot(aes(x = year, y = total_production, color = state)) + geom_point() + 
+  geom_smooth(method = loess) + labs(x = "Year", y = "Total Yearly Honey Production (lb)") +
+  ggtitle("Total Yearly Honey Production (lb) vs. Year") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+df %>%
+  filter(state %in% c("KS", "IL", "IN", "MD", "OK", "ME", "VA", "SC", "TN", "VT", 
+                      "WV", "KY", "NM", "NJ")) %>%
+  ggplot(aes(x = year, y = total_production, color = state)) + geom_point() + 
+  geom_smooth(method = loess) + labs(x = "Year", y = "Total Yearly Honey Production (lb)") +
+  ggtitle("Total Yearly Honey Production (lb) vs. Year") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+df %>%
+  filter(state %in% c("LA", "ID", "AR", "OR", "WI", "WY", "WA", "NY", "NE", "MI", 
+                      "MS", "MO", "NC", "NV", "OH")) %>%
+  ggplot(aes(x = year, y = total_production, color = state)) + geom_point() + 
+  geom_smooth(method = loess) + labs(x = "Year", y = "Total Yearly Honey Production (lb)") +
+  ggtitle("Total Yearly Honey Production (lb) vs. Year") + 
+  theme(plot.title = element_text(hjust = 0.5))
+``` 
+
+Below is a scatterplot of the Average Total Honey Production in Pounds vs. Year.
+geom_line() connects each point in order of the variable on the x-axis, highlighting the changes 
+between each year in average honey production (lb).
+
+Even though the total average honey production increases a little during 1999-2000, 2002-2004, 
+2007-2008, an 2009-2010, as seen through the black line, overall, there is a general decrease in 
+total average honey production from 1998 to 2012 as seen through the blue line.
+
+```{r}
+df %>%
+  group_by(year) %>%
+  summarise(avg_total_production = mean(total_production)) %>%
+  ggplot(aes(x = year, y = avg_total_production)) + geom_point() + geom_line() +
+  geom_smooth(method = loess) + 
+  labs(x = "Year", y = "Average Total Yearly Honey Production (lb)") + 
+  ggtitle("Average Yearly Total Honey Production (lb) vs. Year") + 
+  theme(plot.title = element_text(hjust = 0.5))
+``` 
+
+Using geom_bar(), below is a bar graph of State vs. Total Honey Production in Pounds. The Total 
+Honey Production number is the sum of all the honey a state has produced between 1998 and 2012. 
+North Dakota (ND) has produced the most amount of honey, while South Carolina (SC) has produced 
+the least amount of honey over time.
+
+```{r}
+df %>%
+  group_by(state) %>%
+  summarise(total_amount = sum(total_production)) %>%
+  ggplot(mapping = aes(y = total_amount, x = reorder(state, total_amount), 
+                       color = state, reorder(total_amount))) + 
+  geom_bar(stat = "identity") + labs(y = "Total Honey Production (lb)", x = "State") + 
+  ggtitle("Total Honey Production (lb) vs. State") + 
+  theme(plot.title = element_text(hjust = 0.5)) + coord_flip()
+``` 
+
+Using geom_violin(), below is a violin plot of Price Per Pound ($) vs. Year. 
+A violin plot is a type of plot that displays the distribution of the variable in the y-axis 
+(price_per_lb) for each value of the variable in the x-axis (year).
+Over the years, the price of honey per pound has gradually increased from less than 1 dollar to 
+prices over 4 dollars.
+
+```{r}
+df %>%
+  ggplot(aes(x = factor(year), y = price_per_lb)) + geom_violin() + 
+  labs(x = "Year", y = "Price Per Pound ($)") + 
+  ggtitle("Price Per Pound ($) vs. Year") + theme(plot.title = element_text(hjust = 0.5))
+``` 
+
+Below, using the cut() function, discretization is applied where year is split into 3 equal bins 
+or intervals: (1998-2003], (2003-2007], (2007-2012]. These year intervals are then added into a 
+new column, called year_interavls, in the data frame.
+
+The scatterplot shows the Average Price Per Pound ($) vs. the Average Total Honey Production (lb)
+in each year interval, using the facet_grid() function. From the 1st interval to the 3rd 
+interval, there is an increasing trend in the average price of honey, while there is a decreasing
+trend in the average total honey production. Florida (FL) and California (CA) are labeled to 
+highlight this trend using the geom_text() function. The price increases approximately 50 cents 
+per interval and the honey production decreases several million pounds per interval.
+
+Function Documentation:
+  - cut() ~ https://www.rdocumentation.org/packages/base/versions/3.6.0/topics/cut 
+  - facet_grid() ~ https://ggplot2.tidyverse.org/reference/facet_grid.html
+  - geom_text() ~ https://www.rdocumentation.org/packages/ggplot2/versions/0.9.1/topics/geom_text
+
+```{r}
+# Discretize year into 3 intervals
+df$year_intervals <- cut(df$year, breaks = 3) 
+
+df %>%
+  group_by(state, year_intervals) %>%
+  summarise(avg_production = mean(total_production), avg_price = mean(price_per_lb)) %>%
+  ggplot(aes(x = avg_production, y = avg_price, color = state, label = state)) + geom_point() +
+  geom_text(aes(label = ifelse(state == 'CA' | state == 'FL', state, '')), 
+            hjust = 0, vjust = 0) + facet_grid(rows = vars(year_intervals)) + 
+  labs(x = "Average Total Honey Production (lb)", y = "Average Price per Pound ($)") +
+  ggtitle("Average Price per Pound ($) vs. Average Total Honey Production (lb)")
+```  
+
+Here is a dataframe of what was plotted above.
+
+```{r}
+df %>%
+  group_by(state, year_intervals) %>%
+  summarise(avg_production = mean(total_production), avg_price = mean(price_per_lb)) %>%
+  arrange(state)
+```  
+
+# Linear Regression
+
+Linear regression is a very useful technique for data analysis.
+It allows for constructing confidence intervals, utilizing hypothesis testing for relationships 
+between variables, and providing continuous outcomes of interest.
+
+From http://r-statistics.co/Linear-Regression.html , 
+  "linear regression is used to predict the value of an outcome variable Y based on one or more 
+  predictor variables X. The aim is to establish a linear relationship (a mathematical formula) 
+  between the predictor variable(s) and the response variable, so that, we can use this formula 
+  to estimate the value of the response Y, when only the predictors (Xs) values are known."
+
+For more information on Linear Regression and Linear Models:
+  - https://www.statisticssolutions.com/what-is-linear-regression/
+  - http://www.stat.yale.edu/Courses/1997-98/101/linreg.htm 
+  - https://data.princeton.edu/r/linearmodels 
+      - This link helps explains how to fit a model, examine a fit, extract results, and much   
+      more.
+
+```{r}
+# Fit a linear regression model for Total Honey Production (lb) vs. Year
+df_fit_honey <- lm(total_production~year, data = df)
+df_fit_honey
+
+df_fit_honey_stats <- df_fit_honey %>%
+  tidy()
+df_fit_honey_stats
+``` 
+
+```{r}
+cat("On average, the total honey production decreased by", df_fit_honey_stats$estimate[2], 
+    "pounds per year from 1998 to 2012.")
+``` 
+
+If there was a null hypothesis of no relationship between total honey production and year, I 
+would reject that null hypothesis because there is a relationship between the two variables: Over
+time, the total honey production decreases by around -88582.63 per year.
+
+Now, we augment the df_fit_honey, in which columns, such as predictions, residuals, etc. are 
+added.
+Residuals is the difference between the observed value of the dependent variable and the 
+predicted value. Fitted values are also known as predicted values.
+One way to check if your linear regression model is appropriate is to plot a graph of Residuals 
+vs. Fitted Values. This graph will check for the linearity assumption. If the regression model is
+appropriate, the mean of residuals will be approximately 0.
+
+The augment() function Documentation: 
+  - https://www.rdocumentation.org/packages/broom/versions/0.4.3/topics/augment 
+Residuals:
+  - http://www.r-tutor.com/elementary-statistics/simple-linear-regression/residual-plot 
+  
+```{r}
+aug_df_honey <- df_fit_honey %>%
+  augment()
+
+aug_df_honey
+``` 
+
+```{r}
+# A violin plot of model Residuals vs. Year
+aug_df_honey %>%
+  ggplot(aes(x = factor(year), y = .resid)) + geom_violin() + 
+  labs(x = "Year", y = "Residuals") + ggtitle("Residuals vs. Year") + 
+  theme(plot.title = element_text(hjust = 0.5))
+``` 
+
+The 3 graphs below are violin plots of model Residuals vs. State. These 3 plots show that there 
+is a dependence between model residuals and state because each violin is different. This suggests
+that when performing a regression analysis of total honey production across time, it is important
+to consider the state variable.
+
+```{r}
+aug_df_honey <- aug_df_honey %>%
+  inner_join(df, by = "total_production")
+aug_df_honey
+
+aug_df_honey %>%
+  filter(state %in% c("AL", "AR", "AZ", "CA", "CO", "FL", "GA","HI", "IA", 
+                      "ID", "IL", "IN", "KS", "KY", "LA")) %>%
+  ggplot(aes(x = factor(state), y = .resid)) + geom_violin() + 
+  labs(x = "State", y = "Residuals") + ggtitle("Residuals vs. State") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+aug_df_honey %>%
+  filter(state %in% c("MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", 
+                      "ND", "NE", "NJ", "NM", "NV", "NY", "OH")) %>%
+  ggplot(aes(x = factor(state), y = .resid)) + geom_violin() + 
+  labs(x = "State", y = "Residuals") + ggtitle("Residuals vs. State") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+aug_df_honey %>%
+  filter(state %in% c("OK", "OR", "PA", "SC", "SD", "TN", "TX", "UT", 
+                      "VA", "VT", "WA", "WI", "WV", "WY")) %>%
+  ggplot(aes(x = factor(state), y = .resid)) + geom_violin() + 
+  labs(x = "State", y = "Residuals") + ggtitle("Residuals vs. State") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Here, we fit a linear regression model for total honey production including a term for an 
+interaction between state and year.
+
+```{r}
+state_honey_fit <- lm(total_production~year*state, data = df)
+state_honey_fit
+
+state_honey_fit_stats <- state_honey_fit %>%
+  tidy()
+state_honey_fit_stats
+```
+
+The state_honey_fit_stats allows us to find out how much total honey production (in pounds) 
+increases or decreases each year on average for each state. For instance, below is how you would 
+calculate how much total honey production changes per year for AL, HI, and CA.
+
+```{r}
+cat("AL:", state_honey_fit_stats$estimate[2], "\n")
+cat("HI:", (state_honey_fit_stats$estimate[2] + state_honey_fit_stats$estimate[9]), "\n")
+cat("CA:", (state_honey_fit_stats$estimate[2] + state_honey_fit_stats$estimate[5]))
+```
+
+Below, we perform a F-test that compares the Linear Regression with and without the state 
+variable using the anova() function.
+The anova() function Documentation:
+  -https://www.rdocumentation.org/packages/car/versions/3.0-2/topics/Anova 
+
+```{r}
+comp_honey <- anova(df_fit_honey, state_honey_fit)
+comp_honey
+```
+
+The interaction model (or Model #2) is significantly better than the year-only model because the 
+p-value for Model #2 is ver low at 2.2e-16, meaning that adding state to the model significantly 
+improved fit over Model #1
+
+Here are some links for more information on how to interpret:
+  - https://stats.stackexchange.com/questions/115304/interpreting-output-from-anova-when-using-lm-as-input 
+  - https://bookdown.org/ndphillips/YaRrr/comparing-regression-models-with-anova.html 
+
+Below, we'll do the same but with the price of honey per pound.
+
+```{r}
+# Fit a linear regression model for Price of Honey per Pound ($) vs. Year
+df_fit_price <- lm(price_per_lb~year, data = df)
+df_fit_price
+
+df_fit_price_stats <- df_fit_price %>%
+  tidy()
+df_fit_price_stats
+``` 
+
+```{r}
+cat("On average, the price per pound of honey increased by", df_fit_price_stats$estimate[2],
+    "cents per year from 1998 to 2012.")
+```
+
+If there was a null hypothesis of no relationship between the price of honey per pound and year, 
+I would reject that null hypothesis because there is a relationship between the two variables: 
+Over time, the price of honey per pound increases by approximately $0.10.
+
+```{r}
+aug_df_price <- df_fit_price %>%
+  augment()
+aug_df_price
+```
+
+```{r}
+# A violin plot of model Residuals vs. Year
+aug_df_price %>%
+  ggplot(aes(x = factor(year), y = .resid)) + geom_violin() + 
+  labs(x = "Year", y = "Residuals") + ggtitle("Residuals vs. Year") + 
+  theme(plot.title = element_text(hjust = 0.5))
+``` 
+
+The 3 graphs below are violin plots of model Residuals vs. State. These 3 plots show that there 
+is a dependence between model residuals and state because each violin is different. This suggests
+that when performing a regression analysis of price of honey per pound across time, it is 
+important to consider the state variable.
+
+```{r}
+aug_df_price <- aug_df_price %>%
+  inner_join(df, by = "price_per_lb")
+aug_df_price
+
+aug_df_price %>%
+  filter(state %in% c("AL", "AR", "AZ", "CA", "CO", "FL", "GA","HI", "IA", 
+                      "ID", "IL", "IN", "KS", "KY", "LA")) %>%
+  ggplot(aes(x = factor(state), y = .resid)) + geom_violin() + 
+  labs(x = "State", y = "Residuals") + ggtitle("Residuals vs. State") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+aug_df_price %>%
+  filter(state %in% c("MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", 
+                      "ND", "NE", "NJ", "NM", "NV", "NY", "OH")) %>%
+  ggplot(aes(x = factor(state), y = .resid)) + geom_violin() + 
+  labs(x = "State", y = "Residuals") + ggtitle("Residuals vs. State") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+aug_df_price %>%
+  filter(state %in% c("OK", "OR", "PA", "SC", "SD", "TN", "TX", "UT", 
+                      "VA", "VT", "WA", "WI", "WV", "WY")) %>%
+  ggplot(aes(x = factor(state), y = .resid)) + geom_violin() + 
+  labs(x = "State", y = "Residuals") + ggtitle("Residuals vs. State") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Here, we fit a linear regression model for price of honey per pound including a term for an 
+interaction between state and year.
+
+```{r}
+state_price_fit <- lm(price_per_lb~year+state, data=df)
+state_price_fit
+
+state_price_fit_stats <- state_price_fit %>%
+  tidy()
+state_price_fit_stats
+```
+
+The state_price_fit_stats allows us to find out how much price per pound of honey increases or 
+decreases each year on average for each state. For instance, below is how you would calculate how
+much total honey production changes per year for AL, VA, and TN.
+
+```{r}
+cat("AL:", state_price_fit_stats$estimate[2], "\n")
+cat("VA:", (state_price_fit_stats$estimate[2] + state_price_fit_stats$estimate[40]), "\n")
+cat("TN:", (state_price_fit_stats$estimate[2] + state_price_fit_stats$estimate[37]))
+```
+
+Below, we perform a F-test that compares the Linear Regression with and without the state 
+variable using the anova() function.
+
+```{r}
+comp_price <- anova(df_fit_price, state_price_fit)
+comp_price
+```
+
+The interaction model (or Model #2) is significantly better than the year-only model because the 
+p-value for Model #2 is ver low at 2.2e-16, meaning that adding state to the model significantly 
+improved fit over Model #1
+
+# Conclusion
+
+Through analyzing the data from the National Agricultural Statistics Service (NASS) of the U.S. 
+Department of Agriculture (USDA), it is evident that in almost all 44 out of 50 states included 
+in this dataset, the honey production has decreased from 1998-2012, subsequently causing the 
+price of honey to increase. 
+
+According to the NASS and USDA, the honey Americans consume per year now mostly comes from 
+foreign countries out of the US, instead of locally. The decline of honey production is largely 
+due to the decline of the bee population.
+
+Actions YOU can take to protect the bees and the honey!!!
+  ~ Educate yourself
+  ~ Plant a pollinator garden
+  ~ Stop using pesticides
+  ~ Get involved in various projects:
+     - https://www.greatsunflower.org/ 
+     - https://www.planetbee.org/zbw
+     - https://honeybeenet.gsfc.nasa.gov/Sites.htm 
+  ~ Support beekeepers
+  ~ Become a bee keeper :D 
